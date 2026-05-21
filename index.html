@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rest Sea Resort Calc v8.4.0</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.cdnfonts.com/css/rsu" rel="stylesheet">
+    <style>
+        :root { --primary-color: #2279a6; --bg-color: #f4f7f6; --accent-color: #e67e22; --ferry-color: #27ae60; }
+        body { font-family: 'RSU', sans-serif; background-color: var(--bg-color); margin: 0; padding: 10px; color: #333; }
+        .container { max-width: 900px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); position: relative; }
+        h1 { font-family: 'Kalam', cursive; color: var(--primary-color); text-align: center; margin-bottom: 20px; margin-top: 10px; }
+        
+        /* Language Switcher Style */
+        .lang-switcher { display: flex; justify-content: flex-end; align-items: center; gap: 5px; margin-bottom: -10px; font-size: 0.9rem; }
+        .lang-btn { background: none; border: none; cursor: pointer; color: #777; font-family: 'RSU', sans-serif; font-size: 0.95rem; padding: 2px 8px; border-radius: 4px; transition: 0.2s; }
+        .lang-btn.active { color: var(--primary-color); font-weight: bold; background: #eef7fb; }
+        
+        .section-title { border-left: 5px solid var(--primary-color); padding-left: 10px; margin: 20px 0 10px 0; font-weight: bold; color: var(--primary-color); font-size: 1.2rem; }
+        .grid-dates { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .room-group { border: 2px solid #e0e0e0; border-radius: 12px; padding: 15px; margin-bottom: 15px; background: #fff; }
+        .room-type-name { font-size: 1.1rem; font-weight: bold; color: var(--primary-color); margin-bottom: 10px; display: block; }
+        .no-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+        .no-btn { background: #eee; border: 1px solid #ccc; padding: 6px 15px; border-radius: 20px; cursor: pointer; transition: 0.2s; }
+        .no-btn.selected { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+        .btn-any { border-color: var(--primary-color); color: var(--primary-color); font-weight: bold; }
+        .btn-any.selected { background: var(--primary-color); color: white; }
+        .room-config-card { background: #f9f9f9; border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 5px; }
+        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-top: 8px; }
+        .config-grid div { display: flex; flex-direction: column; font-size: 0.9rem; }
+        input, select { padding: 8px; border: 1px solid #ccc; border-radius: 5px; font-family: 'RSU', sans-serif; }
+        button#calculateBtn { width: 100%; padding: 15px; background-color: var(--primary-color); color: white; border: none; border-radius: 5px; font-size: 22px; cursor: pointer; margin-top: 20px; font-family: 'RSU', sans-serif; box-shadow: 0 4px 0 #1a5e82; }
+        #resultArea { margin-top: 20px; padding: 20px; background: #eef7fb; border-left: 5px solid var(--primary-color); white-space: pre-line; line-height: 1.7; font-size: 16px; color: #2c3e50; }
+        .copy-toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 10px 20px; border-radius: 20px; display: none; z-index: 100; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="lang-switcher">
+        <button class="lang-btn active" id="btnTH" onclick="changeLang('TH')">TH</button>
+        <span style="color:#ccc">|</span>
+        <button class="lang-btn" id="btnEN" onclick="changeLang('EN')">EN</button>
+    </div>
+
+    <h1>Rest Sea Resort</h1>
+    
+    <div class="section-title" id="sec1">1. ข้อมูลการเข้าพัก</div>
+    <div class="grid-dates">
+        <div><label id="lblCheckIn">เช็คอิน</label><input type="date" id="checkIn" style="width:90%"></div>
+        <div><label id="lblCheckOut">เช็คเอาท์</label><input type="date" id="checkOut" style="width:90%"></div>
+        <div><label id="lblDiscount">ส่วนลดห้องพัก (%)</label><input type="number" id="discountPercent" value="0" min="0" max="100" style="width:80%"></div>
+    </div>
+    
+    <div class="section-title" id="sec2">2. เลือกห้องพัก</div>
+    <div id="inventoryContainer"></div>
+    
+    <div class="section-title" id="sec3">3. ข้อมูลตั๋วเรือ</div>
+    <div style="background:#e8f5e9; padding:15px; border-radius:10px; border:1px dashed var(--ferry-color);">
+        <div class="grid-dates" style="grid-template-columns: 1fr 1fr;">
+            <div><label id="lblFIn">ขาไป</label><select id="fIn" style="width:100%"><option value="none">-- ไม่จอง --</option><option value="บุญศิริ">Boonsiri (600.-)</option><option value="เสือดำโก">Seudamgo (600.-)</option><option value="เกาะกูด เอกซ์เพรส">KohKood Express (600.-)</option><option value="Oceanfront">Oceanfront (700.-)</option></select></div>
+            <div><label id="lblFOut">ขากลับ</label><select id="fOut" style="width:100%"><option value="none">-- ไม่จอง --</option><option value="บุญศิริ">Boonsiri (600.-)</option><option value="เสือดำโก">Seudamgo (600.-)</option><option value="เกาะกูด เอกซ์เพรส">KohKood Express (600.-)</option><option value="Oceanfront">Oceanfront (700.-)</option></select></div>
+        </div>
+        <div class="grid-dates" style="grid-template-columns: 1fr 1fr;">
+            <div><label id="lblPA">ผู้ใหญ่ (5 ปี+)</label><input type="number" id="pA" value="0" min="0" style="width:90%"></div>
+            <div><label id="lblPC">เด็ก (0-4 ปี)</label><input type="number" id="pC" value="0" min="0" style="width:90%"></div>
+        </div>
+    </div>
+    
+    <button id="calculateBtn" onclick="calculate()">คำนวณและคัดลอก</button>
+    <div id="resultArea" style="display:none;"></div>
+</div>
+<div class="copy-toast" id="toast">คัดลอกรายละเอียดแล้ว!</div>
+
+<script>
+    let currentLang = 'TH';
+
+    const inventory = [
+        { type: 'Beachfront Pool Villa', nums: ['P.1'] },
+        { type: 'Deluxe Villa', nums: ['D.1', 'D.2', 'D.3', 'D.4'] },
+        { type: 'Deluxe Villa (Twin Bed)', nums: ['D.5', 'D.6'] },
+        { type: 'Deluxe Pool Villa', nums: ['P.2', 'P.3', 'P.4', 'P.5'] },
+        { type: 'Twin Villa', nums: ['T.1', 'T.2', 'T.3', 'T.4'] },
+        { type: 'Canopy Pool Villa', nums: ['C.1', 'C.2', 'C.3', 'C.4', 'C.5', 'C.6'] }
+    ];
+
+    const pricing = {
+        High: { 'Twin Villa': [3800, 4300], 'Deluxe Villa': [4500, 5000], 'Deluxe Villa (Twin Bed)': [4500, 5000], 'Deluxe Pool Villa': [5900, 6400], 'Beachfront Pool Villa': [6200, 6700], 'Canopy Pool Villa': [6400, 6900], ea: 1500, ec: 800, bc: 500 },
+        Low: { 'Twin Villa': [2200, 2700], 'Deluxe Villa': [2700, 3200], 'Deluxe Villa (Twin Bed)': [2700, 3200], 'Deluxe Pool Villa': [3900, 4400], 'Beachfront Pool Villa': [4200, 4700], 'Canopy Pool Villa': [4400, 4900], ea: 1200, ec: 600, bc: 300 },
+        Green: { 'Twin Villa': [3000, 3500], 'Deluxe Villa': [3600, 4100], 'Deluxe Villa (Twin Bed)': [3600, 4100], 'Deluxe Pool Villa': [5200, 5700], 'Beachfront Pool Villa': [5500, 6000], 'Canopy Pool Villa': [5700, 6200], ea: 1400, ec: 700, bc: 400 }
+    };
+
+    // Arrays for Full Date Formatting
+    const thDays = ["วันอาทิตย์", "วันจันทร์", "วันอังคาร", "วันพุธ", "วันพฤหัสบดี", "วันศุกร์", "วันเสาร์"];
+    const thMonths = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+    const enDays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const enMonths = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+    function init() {
+        const container = document.getElementById('inventoryContainer');
+        inventory.forEach(item => {
+            const groupDiv = document.createElement('div');
+            groupDiv.className = 'room-group';
+            // เพิ่มปุ่ม "ไม่ระบุ" (ANY)
+            let buttons = `<button class="no-btn btn-any" onclick="toggleRoom('${item.type}', 'ANY', this)">ไม่ระบุ</button>`;
+            buttons += item.nums.map(n => `<button class="no-btn" onclick="toggleRoom('${item.type}', '${n}', this)">${n}</button>`).join('');
+            groupDiv.innerHTML = `<span class="room-type-name">${item.type}</span><div class="no-grid">${buttons}</div><div id="settings_${item.type.replace(/\s/g, '')}"></div>`;
+            container.appendChild(groupDiv);
+        });
+        changeLang('TH'); // Initialize lang texts for ANY buttons
+    }
+
+    function changeLang(lang) {
+        currentLang = lang;
+        document.getElementById('btnTH').classList.toggle('active', lang === 'TH');
+        document.getElementById('btnEN').classList.toggle('active', lang === 'EN');
+        
+        document.getElementById('sec1').innerText = lang === 'TH' ? '1. ข้อมูลการเข้าพัก' : '1. Stay Information';
+        document.getElementById('lblCheckIn').innerText = lang === 'TH' ? 'เช็คอิน' : 'Check-In';
+        document.getElementById('lblCheckOut').innerText = lang === 'TH' ? 'เช็คเอาท์' : 'Check-Out';
+        document.getElementById('lblDiscount').innerText = lang === 'TH' ? 'ส่วนลดห้องพัก (%)' : 'Room Discount (%)';
+        document.getElementById('sec2').innerText = lang === 'TH' ? '2. เลือกห้องพัก' : '2. Select Rooms';
+        document.getElementById('sec3').innerText = lang === 'TH' ? '3. ข้อมูลตั๋วเรือ' : '3. Ferry Ticket';
+        document.getElementById('lblFIn').innerText = lang === 'TH' ? 'ขาไป' : 'Arrival';
+        document.getElementById('lblFOut').innerText = lang === 'TH' ? 'ขากลับ' : 'Departure';
+        document.getElementById('lblPA').innerText = lang === 'TH' ? 'ผู้ใหญ่ (5 ปี+)' : 'Adults (5+ yrs)';
+        document.getElementById('lblPC').innerText = lang === 'TH' ? 'เด็ก (0-4 ปี)' : 'Children (0-4 yrs)';
+        document.getElementById('calculateBtn').innerText = lang === 'TH' ? 'คำนวณและคัดลอก' : 'Calculate & Copy';
+        document.getElementById('toast').innerText = lang === 'TH' ? 'คัดลอกรายละเอียดแล้ว!' : 'Details Copied!';
+        
+        // Update "ANY" buttons text
+        document.querySelectorAll('.btn-any').forEach(btn => {
+            btn.innerText = lang === 'TH' ? 'ไม่ระบุ' : 'Any';
+        });
+
+        const cards = document.querySelectorAll('.room-config-card');
+        cards.forEach(card => {
+            const roomKey = card.id.replace('card_', '');
+            const num = roomKey.split('_')[1];
+            const valEA = document.getElementById(`ea_${roomKey}`).value;
+            const valEC = document.getElementById(`ec_${roomKey}`).value;
+            const valBC = document.getElementById(`bc_${roomKey}`).value;
+            const valBB = document.getElementById(`bb_${roomKey}`).value;
+            
+            let displayTitle = '';
+            if (num === 'ANY') {
+                displayTitle = lang === 'TH' ? 'ไม่ระบุหมายเลข' : 'Any Room';
+            } else {
+                displayTitle = lang === 'TH' ? 'หมายเลข ' + num : 'No. ' + num;
+            }
+
+            card.innerHTML = `<strong>📍 ${displayTitle}</strong><div class="config-grid">
+                <div><label>${lang === 'TH' ? 'เสริมผู้ใหญ่' : 'Extra Adult'}</label><input type="number" id="ea_${roomKey}" value="${valEA}" min="0"></div>
+                <div><label>${lang === 'TH' ? 'เสริมเด็ก(เตียง)' : 'Extra Child (Bed)'}</label><input type="number" id="ec_${roomKey}" value="${valEC}" min="0"></div>
+                <div><label>${lang === 'TH' ? 'อาหารเด็ก(ร่วมเตียง)' : 'Child Breakfast'}</label><input type="number" id="bc_${roomKey}" value="${valBC}" min="0"></div>
+                <div><label>${lang === 'TH' ? 'เด็ก (0-3ปี)' : 'Infant (0-3yrs)'}</label><input type="number" id="bb_${roomKey}" value="${valBB}" min="0"></div>
+            </div>`;
+        });
+    }
+
+    function toggleRoom(type, num, btn) {
+        const safeType = type.replace(/\s/g, '');
+        const settingsDiv = document.getElementById(`settings_${safeType}`);
+        const roomKey = `${safeType}_${num}`;
+        if (btn.classList.contains('selected')) {
+            btn.classList.remove('selected'); document.getElementById(`card_${roomKey}`).remove();
+        } else {
+            btn.classList.add('selected');
+            const card = document.createElement('div');
+            card.className = 'room-config-card'; card.id = `card_${roomKey}`;
+            const isTH = (currentLang === 'TH');
+            
+            let displayTitle = '';
+            if (num === 'ANY') {
+                displayTitle = isTH ? 'ไม่ระบุหมายเลข' : 'Any Room';
+            } else {
+                displayTitle = isTH ? 'หมายเลข ' + num : 'No. ' + num;
+            }
+
+            card.innerHTML = `<strong>📍 ${displayTitle}</strong><div class="config-grid">
+                <div><label>${isTH ? 'เสริมผู้ใหญ่' : 'Extra Adult'}</label><input type="number" id="ea_${roomKey}" value="0" min="0"></div>
+                <div><label>${isTH ? 'เสริมเด็ก(เตียง)' : 'Extra Child (Bed)'}</label><input type="number" id="ec_${roomKey}" value="0" min="0"></div>
+                <div><label>${isTH ? 'อาหารเด็ก(ร่วมเตียง)' : 'Child Breakfast'}</label><input type="number" id="bc_${roomKey}" value="0" min="0"></div>
+                <div><label>${isTH ? 'เด็ก (0-3ปี)' : 'Infant (0-3yrs)'}</label><input type="number" id="bb_${roomKey}" value="0" min="0"></div>
+            </div>`;
+            settingsDiv.appendChild(card);
+        }
+    }
+
+    function getSeason(date) { 
+        const m = date.getMonth()+1; 
+        const d = date.getDate(); 
+        if (m === 12 || (m >= 1 && m <= 5)) return 'High'; 
+        if (m === 6 || (m >= 7 && m < 10) || (m === 10 && d <= 15)) return 'Low'; 
+        return 'Green'; 
+    }
+    
+    function isPeak(date) { 
+        const m = date.getMonth()+1; 
+        const d = date.getDate(); 
+        return ((m === 12 && d >= 20) || (m === 1 && d <= 10) || (m === 4 && d >= 12 && d <= 16)); 
+    }
+
+    function formatDate(date) { 
+        const year = (currentLang === 'TH') ? date.getFullYear() + 543 : date.getFullYear();
+        return `${date.getDate()}/${date.getMonth()+1}/${year}`; 
+    }
+
+    function formatFullDate(date) {
+        const isTH = (currentLang === 'TH');
+        const d = date.getDay();
+        const dateNum = date.getDate();
+        const m = date.getMonth();
+        const y = date.getFullYear();
+
+        if (isTH) {
+            return `${thDays[d]}ที่ ${dateNum} ${thMonths[m]} ${y + 543}`;
+        } else {
+            return `${enDays[d]}, ${dateNum} ${enMonths[m]} ${y}`;
+        }
+    }
+
+    function calculate() {
+        const dInRaw = document.getElementById('checkIn').value;
+        const dOutRaw = document.getElementById('checkOut').value;
+        const discount = parseFloat(document.getElementById('discountPercent').value) || 0;
+        const isTH = (currentLang === 'TH');
+        
+        if (!dInRaw || !dOutRaw) { alert(isTH ? "กรุณาเลือกวันที่เช็คอินและเช็คเอาท์" : "Please select Check-In and Check-Out dates"); return; }
+        const dIn = new Date(dInRaw);
+        const dOut = new Date(dOutRaw);
+        if (dOut <= dIn) { alert(isTH ? "วันเช็คเอาท์ต้องอยู่หลังวันเช็คอิน" : "Check-Out date must be after Check-In date"); return; }
+
+        let output = `Rest Sea Resort\n`;
+        let totalNetAll = 0;
+        let selectedRooms = document.querySelectorAll('.room-config-card');
+
+        if (selectedRooms.length === 0) { alert(isTH ? "กรุณาเลือกห้องพักอย่างน้อย 1 ห้อง" : "Please select at least 1 room"); return; }
+
+        selectedRooms.forEach((card, index) => {
+            const roomKey = card.id.replace('card_', '');
+            const [safeType, num] = roomKey.split('_');
+            const type = inventory.find(i => i.type.replace(/\s/g, '') === safeType).type;
+            
+            const ea = parseInt(document.getElementById(`ea_${roomKey}`).value) || 0;
+            const ec = parseInt(document.getElementById(`ec_${roomKey}`).value) || 0;
+            const bc = parseInt(document.getElementById(`bc_${roomKey}`).value) || 0;
+            const bb = parseInt(document.getElementById(`bb_${roomKey}`).value) || 0;
+
+            let roomBaseTotal = 0, extraEA = 0, extraEC = 0, extraBC = 0, peakNights = 0;
+            
+            // ถ้าเลือกเป็น 'ANY' หรือไม่ระบุห้อง จะตัดข้อความ 'หมายเลขห้อง' ออก
+            if (num === 'ANY') {
+                output += isTH ? `ห้องพัก ${type}\n` : `Room: ${type}\n`;
+            } else {
+                output += isTH ? `ห้องพัก ${type} หมายเลขห้อง ${num}\n` : `Room: ${type} Room No. ${num}\n`;
+            }
+
+            output += isTH ? `เข้าพัก ${formatDate(dIn)} - ${formatDate(dOut)}\n` : `Stay: ${formatDate(dIn)} - ${formatDate(dOut)}\n`;
+
+            let curr = new Date(dIn.getTime());
+            while (curr < dOut) {
+                const s = getSeason(curr);
+                const prices = pricing[s];
+                const isWk = (curr.getDay() === 5 || curr.getDay() === 6);
+                const peak = isPeak(curr);
+                if (peak) peakNights++;
+                
+                let dayPrice = prices[type][isWk ? 1 : 0];
+                if (peak) dayPrice += 1000;
+                
+                let dayNet = Math.round(dayPrice * (1 - discount/100));
+                roomBaseTotal += dayNet;
+
+                let discountText = (discount > 0) ? (isTH ? ` (ราคาส่วนลด ${discount}%)` : ` (${discount}% Discount)`) : "";
+                
+                // ใช้ formatFullDate สำหรับแสดงวันที่แบบเต็ม
+                output += isTH ? 
+                    `${s} Season (${formatFullDate(curr)}) : ราคา ${dayNet.toLocaleString()} บาท${discountText}\n` : 
+                    `${s} Season (${formatFullDate(curr)}) : Price ${dayNet.toLocaleString()} THB${discountText}\n`;
+                
+                extraEA += prices.ea * ea;
+                extraEC += prices.ec * ec;
+                extraBC += prices.bc * bc;
+                
+                curr.setDate(curr.getDate() + 1);
+            }
+            
+            if(peakNights > 0) {
+                output += isTH ? `ช่วง Peak Period จำนวน ${peakNights} คืน\n` : `Peak Period: ${peakNights} night(s)\n`;
+            }
+            
+            if(ea > 0) output += isTH ? `+ เตียงเสริมผู้ใหญ่ (10 ปีขึ้นไป รวมอาหารเช้า) : ${ea} ท่าน : ราคา ${extraEA.toLocaleString()} บาท\n` : `+ Extra Bed Adult (10+ years old with breakfast) : ${ea} person(s) : Price ${extraEA.toLocaleString()} THB\n`;
+            if(ec > 0) output += isTH ? `+ เตียงเสริมเด็ก (4-9 ปี รวมอาหารเช้า) : ${ec} ท่าน : ราคา ${extraEC.toLocaleString()} บาท\n` : `+ Extra Bed Child (4-9 years old with breakfast) : ${ec} person(s) : Price ${extraEC.toLocaleString()} THB\n`;
+            
+            // อัปเดตข้อความอาหารเช้าเด็ก เพิ่มคำว่า "(พักร่วมเตียงหลัก)"
+            if(bc > 0) output += isTH ? `+ อาหารเช้าเด็ก (4-9 ปี (พักร่วมเตียงหลัก)) : ${bc} ท่าน : ราคา ${extraBC.toLocaleString()} บาท\n` : `+ Child Breakfast (4-9 years old (Sharing existing bed)) : ${bc} person(s) : Price ${extraBC.toLocaleString()} THB\n`;
+            
+            if(bb > 0) output += isTH ? `+ เด็ก (0-3 ปี) เข้าพักฟรี แจ้งรับ Baby Cot ได้ ณ วันเข้าพัก : ${bb} ท่าน : ราคา 0 บาท\n` : `+ Infant (0-3 years old) Free of charge, request Baby Cot upon check-in : ${bb} person(s) : Price 0 THB\n`;
+
+            let roomFinal = roomBaseTotal + extraEA + extraEC + extraBC;
+            totalNetAll += roomFinal;
+
+            output += isTH ? `รวมเป็นเงิน ${roomFinal.toLocaleString()} บาท สำหรับ ${2+ea+ec+bc+bb} ท่านรวมอาหารเช้า และกิจกรรมฟรีภายในรีสอร์ท\n` : `Total: ${roomFinal.toLocaleString()} THB for ${2+ea+ec+bc+bb} person(s) including breakfast and free resort activities\n`;
+            
+            if (selectedRooms.length > 1) {
+                output += `--------------------------\n`;
+            }
+        });
+
+        const fIn = document.getElementById('fIn').value, fOut = document.getElementById('fOut').value;
+        const pA = parseInt(document.getElementById('pA').value) || 0;
+        const fPrices = { "บุญศิริ": 600, "เสือดำโก": 600, "เกาะกูด เอกซ์เพรส": 600, "Oceanfront": 700 };
+
+        if (pA > 0) {
+            let ferryTotal = 0;
+            output += isTH ? `\n🚢 ข้อมูลตั๋วเรือ\n` : `\n🚢 Ferry Ticket Information\n`;
+            
+            let fInName = fIn, fOutName = fOut;
+            if (!isTH) {
+                if (fIn === 'บุญศิริ') fInName = 'Boonsiri';
+                else if (fIn === 'เสือดำโก') fInName = 'Seudamgo';
+                else if (fIn === 'เกาะกูด เอกซ์เพรส') fInName = 'KohKood Express';
+                
+                if (fOut === 'บุญศิริ') fOutName = 'Boonsiri';
+                else if (fOut === 'เสือดำโก') fOutName = 'Seudamgo';
+                else if (fOut === 'เกาะกูด เอกซ์เพรส') fOutName = 'KohKood Express';
+            }
+
+            if (fIn === fOut && fIn !== 'none') {
+                ferryTotal = fPrices[fIn] * 2 * pA;
+                output += isTH ? `ตั๋วเรือ ${fInName} ไป-กลับ : ${pA} ท่าน : ${ferryTotal.toLocaleString()} บาท\n` : `Ferry Ticket ${fInName} Round-Trip : ${pA} person(s) : ${ferryTotal.toLocaleString()} THB\n`;
+            } else {
+                if (fIn !== 'none') { const c = fPrices[fIn]*pA; ferryTotal += c; output += isTH ? `ตั๋วเรือ ${fInName} ขาไป : ${pA} ท่าน : ${c.toLocaleString()} บาท\n` : `Ferry Ticket ${fInName} One-Way (Inbound) : ${pA} person(s) : ${c.toLocaleString()} THB\n`; }
+                if (fOut !== 'none') { const c = fPrices[fOut]*pA; ferryTotal += c; output += isTH ? `ตั๋วเรือ ${fOutName} ขากลับ : ${pA} ท่าน : ${c.toLocaleString()} บาท\n` : `Ferry Ticket ${fOutName} One-Way (Outbound) : ${pA} person(s) : ${c.toLocaleString()} THB\n`; }
+            }
+            totalNetAll += ferryTotal;
+        }
+
+        if (selectedRooms.length > 1 || pA > 0) {
+            output += isTH ? `\n💰 รวมเป็นเงินสุทธิทั้งสิ้น ${Math.round(totalNetAll).toLocaleString()} บาท` : `\n💰 Grand Total: ${Math.round(totalNetAll).toLocaleString()} THB`;
+        }
+
+        output = output.trim();
+
+        const res = document.getElementById('resultArea'); 
+        res.innerText = output; 
+        res.style.display = 'block';
+        
+        const el = document.createElement('textarea'); 
+        el.value = output; 
+        document.body.appendChild(el); 
+        el.select(); 
+        document.execCommand('copy'); 
+        document.body.removeChild(el);
+        
+        const toast = document.getElementById('toast'); 
+        toast.style.display = 'block'; 
+        setTimeout(() => toast.style.display = 'none', 2500);
+    }
+    window.onload = init;
+</script>
+</body>
+</html>
